@@ -35,10 +35,12 @@ multi hm(Int:D $minutes is copy) {
     return sprintf("%d:%02d", $hours, $minutes % 60);
 }
 
+#| display current status
 multi MAIN() {
     MAIN('status')
 }
 
+#| display current status
 multi MAIN('status') {
     if $work_dir.child('started').f {
         my $since   = started;
@@ -50,6 +52,7 @@ multi MAIN('status') {
     }
 }
 
+#| add a note to currently tracked work
 multi MAIN('note') {
     my $note = prompt("Enter your note: ");
     given open($work_dir.child('notes'), :a) {
@@ -59,6 +62,7 @@ multi MAIN('note') {
     say "Note noted";
 }
 
+#| start time tracking
 multi MAIN('start') {
     my $now = DateTime.now;
 
@@ -70,6 +74,7 @@ multi MAIN('start') {
     say "Work started at {hm($now)}";
 }
 
+#| show work log for current/last month
 multi MAIN('log', Bool :$last) {
     say "Work log for {$last ?? 'last' !! 'current'} month:\n";
 
@@ -101,6 +106,7 @@ multi MAIN('log', Bool :$last) {
     }
 }
 
+#| finish current time tracking and log the time spent
 multi MAIN('finish') {
     my $started = started;
     my $ended   = DateTime.now;

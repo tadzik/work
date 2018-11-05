@@ -1,0 +1,8 @@
+% work --help
+Usage:
+  work -- display current status
+  work status -- display current status
+  work note -- add a note to currently tracked work
+  work start -- start time tracking
+  work [--last] log -- show work log for current/last month
+  work finish -- finish current time tracking and log the time spent

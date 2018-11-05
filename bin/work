@@ -1,0 +1,133 @@
+#!/usr/bin/env perl6
+
+my $work_dir = %*ENV<HOME>.IO.child('.work');
+$work_dir.d or $work_dir.mkdir;
+
+my $logfile = $work_dir.child('log');
+
+sub roundings(Duration:D $dur) {
+    my $minutes    = minutes($dur);
+    my $half-hours = Int($minutes / 30);
+    return ($half-hours X+ (-1, 0, 1)).map(* * 30);
+}
+
+sub started {
+    return unless $work_dir.child('started').f;
+
+    my $started = $work_dir.child('started').slurp.Int;
+    return DateTime.new($started).local;
+}
+
+sub minutes(Duration:D $dur) {
+    return Int($dur / 60);
+}
+
+multi hm(DateTime:D $when) {
+    return "{$when.hour}:{$when.minute}";
+}
+
+multi hm(Duration:D $dur) {
+    hm(minutes($dur))
+}
+
+multi hm(Int:D $minutes is copy) {
+    my $hours = Int($minutes / 60);
+    return sprintf("%d:%02d", $hours, $minutes % 60);
+}
+
+multi MAIN() {
+    MAIN('status')
+}
+
+multi MAIN('status') {
+    if $work_dir.child('started').f {
+        my $since   = started;
+        my $elapsed = DateTime.now - $since;
+
+        say "You've been working for {hm($elapsed)} (since {hm($since)})";
+    } else {
+        say "Work is currently not being done";
+    }
+}
+
+multi MAIN('note') {
+    my $note = prompt("Enter your note: ");
+    given open($work_dir.child('notes'), :a) {
+        .say($note);
+        .close();
+    }
+    say "Note noted";
+}
+
+multi MAIN('start') {
+    my $now = DateTime.now;
+
+    if started() {
+        return MAIN('status');
+    }
+
+    $work_dir.child('started').spurt($now.posix);
+    say "Work started at {hm($now)}";
+}
+
+multi MAIN('log', Bool :$last) {
+    say "Work log for {$last ?? 'last' !! 'current'} month:\n";
+
+    my $start = Date.today.truncated-to('month');
+    if $last {
+        $start .= earlier(:1month);
+    }
+    my $end = $start.later(:1month);
+
+    my %projects;
+    
+    for $logfile.lines {
+        my ($date, $hours, $project, $notes) = .split(',', 4);
+        $date = Date.new($date);
+        if $start <= $date < $end {
+            %projects{$project}.push($hours => $notes);
+        }
+    }
+
+    for %projects.kv -> $project, @work {
+        say "Project $project:";
+        my $total-minutes = 0;
+        for @work -> $day {
+            printf "\t[%s]\t%s\n", $day.key, $day.value;
+            my ($hours, $minutes) = $day.key.split(':');
+            $total-minutes += $minutes + $hours * 60;
+        }
+        say "\n\tTotal time spent: {hm($total-minutes)}";
+    }
+}
+
+multi MAIN('finish') {
+    my $started = started;
+    my $ended   = DateTime.now;
+
+    my @candidates = roundings($ended - $started).map({ hm($_) });
+    say "Job well done! How much time do you want to log?";
+    say "1) @candidates[0]";
+    say "2) @candidates[1] (default)";
+    say "3) @candidates[2]";
+    my $choice = prompt("Your choice: ");
+    if $choice == any(1, 2, 3) {
+        $choice = @candidates[$choice - 1];
+    } else {
+        $choice = @candidates[1];
+    }
+
+    my $project = prompt("What project was it? ");
+
+    my $notes = slurp($work_dir.child('notes'));
+    $notes    ~~ s:g/\n/\\n/;
+
+    given open($logfile, :a) {
+        .say("{Date.today},$choice,$project,$notes");
+        .close();
+    }
+
+    say "Work logged";
+    $work_dir.child('started').unlink;
+    $work_dir.child('notes').unlink;
+}

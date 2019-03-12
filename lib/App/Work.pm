@@ -3,8 +3,19 @@ unit module App::Work;
 my $work_dir = %*ENV<HOME>.IO.child('.work');
 $work_dir.d or $work_dir.mkdir;
 
+my $hooks_dir = $work_dir.child('hooks');
+
 my $logfile   = $work_dir.child('log');
 my $notesfile = $work_dir.child('notes');
+
+sub run_hook(Str $hook) {
+    my $hookfile = $hooks_dir.child($hook);
+    if $hookfile.f {
+        say "Running $hook hook";
+        chdir $work_dir;
+        run "$hookfile";
+    }
+}
 
 sub roundings(Duration:D $dur) {
     my $minutes    = minutes($dur);
@@ -76,6 +87,7 @@ multi MAIN('start') is export {
         return MAIN('status');
     }
 
+    run_hook('before-start');
     $work_dir.child('started').spurt($now.posix);
     say "Work started at {hm($now)}";
 }
@@ -161,4 +173,6 @@ multi MAIN('finish') is export {
     say "Work logged";
     $work_dir.child('started').unlink;
     $notesfile.unlink;
+
+    run_hook('after-finish');
 }

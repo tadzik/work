@@ -100,8 +100,9 @@ multi MAIN('abort') is export {
 }
 
 #| show work log for current/last month
-multi MAIN('log', Bool :$last, Bool :$week) is export {
-    say "Work log for {$last ?? 'last' !! 'current'} {$week ?? 'week' !! 'month'}:\n";
+multi MAIN('log', Bool :$last, Bool :$week, Bool :$day) is export {
+    my $what = $week ?? 'week' !! $day ?? 'day' !! 'month';
+    say "Work log for {$last ?? 'last' !! 'current'} $what:\n";
 
     my ($start, $end);
     if $week {
@@ -110,6 +111,12 @@ multi MAIN('log', Bool :$last, Bool :$week) is export {
             $start .= earlier(:1week);
         }
         $end = $start.later(:1week);
+    } elsif $day {
+        $start = Date.today;
+        if $last {
+            $start .= earlier(:1day);
+        }
+        $end = $start.later(:1day);
     } else {
         $start = Date.today.truncated-to('month');
         if $last {

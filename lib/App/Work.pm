@@ -8,12 +8,12 @@ my $hooks_dir = $work_dir.child('hooks');
 my $logfile   = $work_dir.child('log');
 my $notesfile = $work_dir.child('notes');
 
-sub run_hook(Str $hook) {
+sub run_hook(Str $hook, *@args) {
     my $hookfile = $hooks_dir.child($hook);
     if $hookfile.f {
         say "Running $hook hook";
         chdir $work_dir;
-        run "$hookfile";
+        run "$hookfile", @args;
     }
 }
 
@@ -137,6 +137,7 @@ multi MAIN('log', Bool :$last, Bool :$week) is export {
             $total-minutes += $minutes + $hours * 60;
         }
         say "\n\tTotal time spent: {hm($total-minutes)}";
+        run_hook('project-log', $project, $total-minutes);
     }
 }
 
